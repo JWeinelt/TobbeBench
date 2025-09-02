@@ -1,5 +1,6 @@
 package de.julianweinelt.tobbql.parser;
 
+import de.julianweinelt.tobbql.api.Query;
 import de.julianweinelt.tobbql.data.Project;
 import lombok.Getter;
 
@@ -8,6 +9,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -39,7 +41,14 @@ public class Connection {
     }
 
     public List<String> getDatabases() {
-        return null;
+        QueryResult result = query(Query.buildGetDatabases());
+        List<String> databases = new ArrayList<>();
+        for (Object o : result.getValuesOfColumn("dbName")) {
+            if (o instanceof String dbName) {
+                databases.add(dbName);
+            }
+        }
+        return databases;
     }
     public List<String> getTables(String database) {
         return null;
