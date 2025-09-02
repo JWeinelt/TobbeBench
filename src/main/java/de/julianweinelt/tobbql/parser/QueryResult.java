@@ -48,4 +48,14 @@ public class QueryResult {
         if (index < 0 || index >= resultSet.size()) return null;
         return resultSet.get(index);
     }
+
+    public List<Object> getValuesOfColumn(String columnName) {
+        List<Object> values = new ArrayList<>();
+        for (HashMap<String, Object> row : resultSet) {
+            if (row.containsKey(columnName)) {
+                values.add(row.get(columnName));
+            }
+        }
+        return values;
+    }
 }
