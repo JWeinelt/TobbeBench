@@ -11,6 +11,7 @@ import java.util.List;
 @Setter
 public class Configuration {
     private List<Project> projects = new ArrayList<>();
+    private final String clientVersion = "1.0.0";
 
     public void addProject(Project project) {
         projects.add(project);
