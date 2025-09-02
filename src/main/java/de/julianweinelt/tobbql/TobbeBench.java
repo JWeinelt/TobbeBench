@@ -20,9 +20,9 @@ public class TobbeBench {
     }
 
     public void start() {
-        ui = new TobbeUI();
-        ui.start();
         configManager = new ConfigManager();
         configManager.loadConfig();
+        ui = new TobbeUI();
+        ui.start();
     }
 }
