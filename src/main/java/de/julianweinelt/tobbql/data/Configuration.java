@@ -1,5 +1,6 @@
 package de.julianweinelt.tobbql.data;
 
+import de.julianweinelt.tobbql.TobbeBench;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,4 +11,12 @@ import java.util.List;
 @Setter
 public class Configuration {
     private List<Project> projects = new ArrayList<>();
+
+    public void addProject(Project project) {
+        projects.add(project);
+    }
+
+    public static Configuration getConfiguration() {
+        return TobbeBench.getInstance().getConfigManager().getConfiguration();
+    }
 }
