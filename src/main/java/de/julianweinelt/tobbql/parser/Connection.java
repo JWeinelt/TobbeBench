@@ -39,13 +39,13 @@ public class Connection {
     }
 
     public List<String> getDatabases() {
-
+        return null;
     }
     public List<String> getTables(String database) {
-
+        return null;
     }
     public List<String> getColumns(String database, String table) {
-
+        return null;
     }
 
     private QueryResult query(String query) {
