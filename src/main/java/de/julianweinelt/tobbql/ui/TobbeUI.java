@@ -6,8 +6,14 @@ import de.julianweinelt.tobbql.data.Configuration;
 import de.julianweinelt.tobbql.data.Project;
 import de.julianweinelt.tobbql.parser.Connection;
 import lombok.Getter;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
+import org.fife.ui.rtextarea.RTextScrollPane;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -173,7 +179,7 @@ public class TobbeUI {
         toolBar.add(new JButton("Connect"));
         JButton btnNewQuery = new JButton("New Query");
         btnNewQuery.addActionListener(e -> {
-            addEditorTab(workTabs, "New query");
+            addCreateTableEditorTab(workTabs, "New query");
         });
         toolBar.add(btnNewQuery);
         toolBar.add(new JButton("Refresh"));
@@ -183,7 +189,7 @@ public class TobbeUI {
         JTree tree = new JTree(root);
         JScrollPane treeScroll = new JScrollPane(tree);
         treeScroll.setPreferredSize(new Dimension(250, 600));
-        workTabs.addTab("Willkommen", new JLabel("Arbeitsfläche für " + connection.getProject().getName()));
+        workTabs.addTab("Welcome", new JLabel("Workspace for " + connection.getProject().getName()));
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, treeScroll, workTabs);
         splitPane.setDividerLocation(250);
@@ -249,20 +255,114 @@ public class TobbeUI {
 
         JToolBar editorToolBar = new JToolBar();
         editorToolBar.setFloatable(false);
-        JButton runButton = new JButton("▶ Ausführen");
-        JButton saveButton = new JButton("💾 Speichern");
-        JButton formatButton = new JButton("✨ Formatieren");
+        JButton runButton = new JButton("▶ Execute (CTRL+ENTER)");
+        JButton saveButton = new JButton("💾 Save (CTRL+S)");
+        JButton formatButton = new JButton("✨ Format (CTRL+SHIFT+F)");
         editorToolBar.add(runButton);
         editorToolBar.add(saveButton);
         editorToolBar.add(formatButton);
 
-        JTextArea editorArea = new JTextArea();
-        editorArea.setFont(new Font("Consolas", Font.PLAIN, 14)); // Monospace-Font
-        editorArea.setTabSize(4);
-        JScrollPane editorScroll = new JScrollPane(editorArea);
+        RSyntaxTextArea editorArea = new RSyntaxTextArea(18, 60);
+        editorArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_SQL);
+        editorArea.setAnimateBracketMatching(true);
+        editorArea.setCodeFoldingEnabled(true);
+        editorArea.setHighlightCurrentLine(true);
 
-        editorPanel.add(editorToolBar, BorderLayout.NORTH);
-        editorPanel.add(editorScroll, BorderLayout.CENTER);
+        RTextScrollPane sp = new RTextScrollPane(editorArea);
+        editorPanel.add(editorToolBar);
+        editorPanel.add(sp, BorderLayout.CENTER);
+
+        workTabs.addTab(title, editorPanel);
+        workTabs.setSelectedComponent(editorPanel);
+    }
+
+    private void addCreateTableEditorTab(JTabbedPane workTabs, String title) {
+        JPanel editorPanel = new JPanel(new BorderLayout());
+
+        JToolBar toolBar = new JToolBar();
+        toolBar.setFloatable(false);
+        JButton saveButton = new JButton("💾 Anwenden");
+        JButton cancelButton = new JButton("❌ Abbrechen");
+        toolBar.add(saveButton);
+        toolBar.add(cancelButton);
+
+        JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        namePanel.add(new JLabel("Tabellenname:"));
+        JTextField tableNameField = new JTextField(20);
+        namePanel.add(tableNameField);
+
+        String[] columnNames = {"Spaltenname", "Datentyp", "Länge", "PK", "NN", "AI"};
+        Object[][] data = {
+                {"id", "INT", 11, true, true, true},
+                {"name", "VARCHAR", 255, false, false, false}
+        };
+
+        DefaultTableModel model = new DefaultTableModel(data, columnNames) {
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex >= 3) return Boolean.class;
+                return super.getColumnClass(columnIndex);
+            }
+        };
+        JTable columnTable = new JTable(model);
+        JScrollPane tableScroll = new JScrollPane(columnTable);
+
+        JTextArea sqlPreview = new JTextArea(5, 60);
+        sqlPreview.setFont(new Font("Consolas", Font.PLAIN, 13));
+        sqlPreview.setEditable(false);
+        JScrollPane sqlScroll = new JScrollPane(sqlPreview);
+
+        Runnable updateSQL = () -> {
+            StringBuilder sb = new StringBuilder();
+            sb.append("CREATE TABLE ").append(tableNameField.getText()).append(" (\n");
+            for (int i = 0; i < model.getRowCount(); i++) {
+                String colName = model.getValueAt(i, 0).toString();
+                String type = model.getValueAt(i, 1).toString();
+                String length = model.getValueAt(i, 2).toString();
+                boolean pk = (Boolean) model.getValueAt(i, 3);
+                boolean nn = (Boolean) model.getValueAt(i, 4);
+                boolean ai = (Boolean) model.getValueAt(i, 5);
+
+                sb.append("  ").append(colName).append(" ").append(type);
+                if (!length.isEmpty()) sb.append("(").append(length).append(")");
+                if (nn) sb.append(" NOT NULL");
+                if (ai) sb.append(" AUTO_INCREMENT");
+                sb.append(",\n");
+
+                if (pk) {
+                    sb.append("  PRIMARY KEY (").append(colName).append("),\n");
+                }
+            }
+            int lastComma = sb.lastIndexOf(",");
+            if (lastComma != -1) sb.deleteCharAt(lastComma);
+            sb.append("\n);");
+            sqlPreview.setText(sb.toString());
+        };
+
+        tableNameField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateSQL.run();
+            }
+        });
+        model.addTableModelListener(e -> updateSQL.run());
+
+        updateSQL.run();
+
+        editorPanel.add(toolBar, BorderLayout.NORTH);
+        editorPanel.add(namePanel, BorderLayout.BEFORE_FIRST_LINE);
+        editorPanel.add(tableScroll, BorderLayout.CENTER);
+        editorPanel.add(sqlScroll, BorderLayout.SOUTH);
 
         workTabs.addTab(title, editorPanel);
         workTabs.setSelectedComponent(editorPanel);
